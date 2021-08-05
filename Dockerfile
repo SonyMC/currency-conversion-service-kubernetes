@@ -5,7 +5,8 @@ COPY pom.xml /home/app
 RUN mvn -f /home/app/pom.xml clean package
 
 # Create an Image
-FROM openjdk:11-jre-slim
+#FROM openjdk:11-jre-slim
+FROM openjdk:11
 VOLUME /tmp
 EXPOSE 8100
 COPY --from=build /home/app/target/*.jar app.jar
