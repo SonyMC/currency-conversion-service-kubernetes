@@ -1,0 +1,85 @@
+# Deployment Details
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  labels:
+# Deployment label  
+    app: currency-conversion
+  name: currency-conversion
+  namespace: default
+# Pod Specification  
+spec:
+# How many pods?
+  replicas: 1
+  selector:
+    matchLabels:
+ # This label is defined below  and matches the deployment to all the pods withthe specified label 
+      app: currency-conversion
+  strategy:
+ # Release strategy is specified here. 
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+       labels:
+# Pod label       
+        app: currency-conversion
+# Container Specification ( A Pod an contain multiple containers)        
+    spec:
+      containers:
+# Container 1      
+      - image: mailsonymathew/mmv2-docker-currency-conversion-service-kubernetes:0.0.12-SNAPSHOT
+        imagePullPolicy: IfNotPresent
+        name: mmv2-docker-currency-conversion-service-kubernetes
+# Environment declaration using config map ( the config map is dfined at the bottom)
+        envFrom:
+          - configMapRef:
+              name: currency-conversion        
+# Specify the environment variables. This is an array and we can define as many as we want
+# Env variable CURRENCY_EXCHANGE_URI is used in CurrencyExchangeProxy.java. Value is http://service name wich can be found by runnign cmd 'kubectl get svc'
+# The following configuration will load balance between existing instances of currency-exchane service
+#        env:
+#          - name: CURRENCY_EXCHANGE_URI
+#            value: http://currency-exchange
+# Container 2      
+#      - image: mailsonymathew/mmv3-docker-currency-exchange-service-kubernetes:0.0.11-SNAPSHOT
+#        imagePullPolicy: IfNotPresent
+#        name: mmv3-docker-currency-exchange-service-kubernetes
+# Container 3      
+#      - image: mailsonymathew/mmv3-docker-currency-exchange-service-kubernetes:0.0.11-SNAPSHOT
+#        imagePullPolicy: IfNotPresent
+#        name: mmv3-docker-currency-exchange-service-kubernetes                  
+      restartPolicy: Always
+---
+# Service Details
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: currency-conversion
+  name: currency-conversion
+  namespace: default
+# Service specification matches the service to a specific deployment  
+spec:
+  ports:
+  - port: 8100
+    protocol: TCP
+    targetPort: 8100
+  selector:
+    app: currency-conversion
+# Can be used for web api's where al lrequests need to be send to the same instance. Here since we are using REST api's this does nto matter.    
+  sessionAffinity: None
+# Type of the service  
+  type: LoadBalancer
+---
+apiVersion: v1
+data:
+  CURRENCY_EXCHANGE_URI: http://currency-exchange
+kind: ConfigMap
+metadata:
+  name: currency-conversion
+  namespace: default
